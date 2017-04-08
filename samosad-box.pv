@@ -42,6 +42,10 @@ piece_leftover_length = piece_leftover_length_mm * scale
 
 HORIZONTAL = 1
 VERTICAL = 0
+LEFT = 0
+RIGHT = 1
+UP = 2
+DOWN = 3
 
 materials = []
 
@@ -52,9 +56,9 @@ def draw_piece(name, length, thick, orientation):
         rect(0,0, thick, length)
     with fill(0):
         if (orientation == HORIZONTAL):
-            text(name, length/2 + thick*2, thick)
+            text(name, length/2 + thick*5, thick)
         else:
-            text(name, 0, length/2 + thick*2)
+            text(name, 0, length/2 + thick*5)
 
 def draw_sheet(name, length, orientation):
     materials.append( "(%s) %s*%s*%s" % (name, int(length/scale), height_mm, sheet_thickness_mm) )
@@ -67,7 +71,10 @@ def draw_bar(name, length, orientation):
 def draw_bars():
     push()
     draw_bar("b1", b1_length, HORIZONTAL)
-    
+    draw_long_nail(DOWN)
+    with translate(b2_length + bar_thickness, 0):
+        draw_long_nail(DOWN)
+
     translate(0, bar_thickness)
     draw_bar("b1", b1_length, VERTICAL)
     translate(bar_thickness, 0)
@@ -77,15 +84,28 @@ def draw_bars():
     
     translate(-b2_length, b1_length - bar_thickness)
     draw_bar("b2", b2_length, HORIZONTAL)
-    
+    with translate(-bar_thickness, 0):
+        draw_long_nail(RIGHT)
+    with translate(b2_length+bar_thickness, 0):
+        draw_long_nail(LEFT)
+
     translate(0, -b1_length + bar_thickness + b2_length - sheet_thickness)
     draw_bar("b2", b2_length, HORIZONTAL)
+    with translate(-bar_thickness, 0):
+        draw_long_nail(RIGHT)
     
     translate(b2_length + bar_thickness)
     draw_bar("b3", b3_length, HORIZONTAL)
+    with translate(-bar_thickness, 0):
+        draw_long_nail(RIGHT)
     
     translate(b3_length, -b2_length-bar_thickness+sheet_thickness)
     draw_bar("b4", b4_length, VERTICAL)
+    with translate(bar_thickness, 0):
+        draw_long_nail(LEFT)
+    with translate(bar_thickness, b4_length-bar_thickness):
+        draw_long_nail(LEFT)
+    
     pop()
 
 def draw_sheets():
@@ -123,8 +143,10 @@ def print_bill():
     translate(0 + 20, 50)
     text("Частини:\n" + bill_str, 50, 50)
     
-def draw_pillar_projection():
+def draw_pillar_projection(tip=False):
     rect(0, 0, bar_thickness, bar_thickness)
+    if (tip):
+        text("b5", 10,0)
     materials.append( "(%s) %s*%s*%s" % ("b5", b5_length_mm, bar_thickness_mm, bar_thickness_mm) )
     
 def draw_pillar_projections():
@@ -134,18 +156,44 @@ def draw_pillar_projections():
         draw_pillar_projection()
     with translate(0, b1_length):
         draw_pillar_projection()
+
     # middle
     with translate(b2_length + bar_thickness, 0):
         draw_pillar_projection()
-        with translate(0, b4_length-bar_thickness):
+        with translate(0, b4_length):
+            draw_pillar_projection()
+        with translate(bar_thickness, b4_length - bar_thickness):
             draw_pillar_projection()
         with translate(0, b1_length):
             draw_pillar_projection()
+
     # rightmost 2
     with translate(b1_length, 0):
-        draw_pillar_projection()
+        draw_pillar_projection(tip=True)
         with translate(0, b4_length-bar_thickness):
             draw_pillar_projection()
+
+# TODO: instead of this guy piercing the thing along the length
+# I'll use a flat piece of metal + 2 or 3 nails doing perpendicular which solves the trick of the center crossection
+# plus it seems to be much easier in construction
+# Г-shaped pieces of metal can be cool too
+def draw_long_nail(orientation):
+    materials.append("(z1) шуруп довгий")
+    with stroke(0,0,1):
+        beginpath()
+        shift = bar_thickness/2
+        length = bar_thickness*3
+        if orientation == DOWN:
+            moveto(shift, 0)
+            lineto(shift, length)
+        if orientation == RIGHT:
+            moveto(0, shift)
+            lineto(length, shift)
+        if orientation == LEFT:
+            moveto(0, shift)
+            lineto(-length, shift)
+        endpath();
+
 # ----
 # Higher level drawing starts here
 # ----
@@ -157,7 +205,7 @@ translate(sheet_thickness, sheet_thickness)
 draw_bars()
 
 translate(0, largest_length + 10)
-text("Вид згори, 2ий слой каркасу", 20, 50)
+text("Вид згори, 2ий слой каркасу\n + проекціі вертікальних стійок (b5)", 20, 50)
 draw_bars()
 draw_pillar_projections()
 
