@@ -1,5 +1,4 @@
 # TODO: 1. Calculate raw material demands
-# TODO: 4. Calculate the number of nails required for all of this
 BLACK = 0
 WHITE = 1
 
@@ -22,6 +21,7 @@ height_mm = 700
 
 sheet_thickness_mm = 18
 bar_thickness_mm = 50
+distance_between_nails_mm = 100
 
 b1_length_mm = largest_length_mm - sheet_thickness_mm - bar_thickness_mm
 b2_length_mm = piece_length_mm - bar_thickness_mm * 2
@@ -345,7 +345,16 @@ def print_surface_area():
     total_area_m2 = sheet_area_m2 * 2 + bar_area_m2
     area_text += "Всього: %s" % total_area_m2
     text(area_text, 50, 0)
+    
+def add_nails_for_sheets():
+    bar_length_mm = 0
+    for item in materials:
+        if isinstance(item, Bar):
+            bar_length_mm += item.length
 
+    approximate_nails_count = bar_length_mm / distance_between_nails_mm;
+    for i in range(0, approximate_nails_count):
+        materials.append(Connector("z3", "шуруп для фанєри"))
 
 # ----
 # Higher level drawing starts here
@@ -367,7 +376,8 @@ draw_pillars()
 pop()
 
 translate(largest_length, largest_length/2)
+add_nails_for_sheets()
 print_bill()
 
-translate(0, largest_length)
+translate(0, largest_length + 20)
 print_surface_area()
