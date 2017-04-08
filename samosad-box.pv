@@ -1,7 +1,11 @@
+# TODO: 1. Calculate raw material demands
+# TODO: 2. Use Г-shaped metal instead of long nails
+# TODO: 3. Calculate total surface space for the painting
+# TODO: 4. Calculate the number of nails required for all of this
 BLACK = 0
 WHITE = 1
 
-size(800, 800)
+size(800, 1800)
 background(WHITE)
 fill(0,.5)
 
@@ -42,38 +46,46 @@ piece_leftover_length = piece_leftover_length_mm * scale
 
 HORIZONTAL = 1
 VERTICAL = 0
-LEFT = 0
+
 RIGHT = 1
 UP = 2
 DOWN = 3
+LEFT = 4
+
+DOWN_LEFT = 5
+DOWN_RIGHT = 6
+UP_LEFT = 7
+UP_RIGHT = 8
 
 materials = []
 
-def draw_piece(name, length, thick, orientation):
+def draw_piece(name, length, thick, orientation, tip=True):
     if (orientation == HORIZONTAL):
         rect(0,0, length, thick)
     else:
         rect(0,0, thick, length)
     with fill(0):
-        if (orientation == HORIZONTAL):
-            text(name, length/2 + thick*5, thick)
-        else:
-            text(name, 0, length/2 + thick*5)
+        if (tip):
+            if (orientation == HORIZONTAL):
+                text(name, length/2 + thick*5, thick)
+            else:
+                text(name, 0, length/2 + thick*5)
 
 def draw_sheet(name, length, orientation):
     materials.append( "(%s) %s*%s*%s" % (name, int(length/scale), height_mm, sheet_thickness_mm) )
     draw_piece(name, length, sheet_thickness, orientation)
 
-def draw_bar(name, length, orientation):
+def draw_bar(name, length, orientation, tip=True):
     materials.append( "(%s) %s*%s*%s" % (name, int(length/scale), bar_thickness_mm, bar_thickness_mm) )
-    draw_piece(name, length, bar_thickness, orientation)
+    draw_piece(name, length, bar_thickness, orientation, tip)
     
 def draw_bars():
     push()
     draw_bar("b1", b1_length, HORIZONTAL)
-    draw_long_nail(DOWN)
-    with translate(b2_length + bar_thickness, 0):
-        draw_long_nail(DOWN)
+    with translate(bar_thickness, bar_thickness):
+        draw_long_nail(DOWN_RIGHT)
+    with translate(b2_length + bar_thickness, bar_thickness):
+        draw_long_nail(DOWN_LEFT)
 
     translate(0, bar_thickness)
     draw_bar("b1", b1_length, VERTICAL)
@@ -84,27 +96,27 @@ def draw_bars():
     
     translate(-b2_length, b1_length - bar_thickness)
     draw_bar("b2", b2_length, HORIZONTAL)
-    with translate(-bar_thickness, 0):
-        draw_long_nail(RIGHT)
-    with translate(b2_length+bar_thickness, 0):
-        draw_long_nail(LEFT)
+    draw_long_nail(UP_RIGHT)
+    with translate(b2_length, 0):
+        draw_long_nail(UP_LEFT)
 
     translate(0, -b1_length + bar_thickness + b2_length - sheet_thickness)
     draw_bar("b2", b2_length, HORIZONTAL)
-    with translate(-bar_thickness, 0):
-        draw_long_nail(RIGHT)
+    with translate(0, bar_thickness):
+        draw_long_nail(DOWN_RIGHT)
     
     translate(b2_length + bar_thickness)
     draw_bar("b3", b3_length, HORIZONTAL)
-    with translate(-bar_thickness, 0):
-        draw_long_nail(RIGHT)
+    with translate(-bar_thickness, bar_thickness):
+        draw_long_nail(DOWN_LEFT)
     
     translate(b3_length, -b2_length-bar_thickness+sheet_thickness)
     draw_bar("b4", b4_length, VERTICAL)
-    with translate(bar_thickness, 0):
-        draw_long_nail(LEFT)
-    with translate(bar_thickness, b4_length-bar_thickness):
-        draw_long_nail(LEFT)
+
+    with translate(0, bar_thickness):
+        draw_long_nail(DOWN_LEFT)
+    with translate(0, b4_length-bar_thickness):
+        draw_long_nail(UP_LEFT)
     
     pop()
 
@@ -140,14 +152,12 @@ def print_bill():
         bill_str += str(item) + " -> " + str(value) +" шт.\n"
     
     fill(0)
-    translate(0 + 20, 50)
-    text("Частини:\n" + bill_str, 50, 50)
+    text("Частини:\n" + bill_str, 50, 30)
     
 def draw_pillar_projection(tip=False):
     rect(0, 0, bar_thickness, bar_thickness)
     if (tip):
         text("b5", 10,0)
-    materials.append( "(%s) %s*%s*%s" % ("b5", b5_length_mm, bar_thickness_mm, bar_thickness_mm) )
     
 def draw_pillar_projections():
     # leftmost
@@ -178,26 +188,60 @@ def draw_pillar_projections():
 # plus it seems to be much easier in construction
 # Г-shaped pieces of metal can be cool too
 def draw_long_nail(orientation):
-    materials.append("(z1) шуруп довгий")
+    materials.append("(z1) шуруп короткий")
+    materials.append("(z1) шуруп короткий")
+    materials.append("(z2) куточок")
     with stroke(0,0,1):
         beginpath()
         shift = bar_thickness/2
-        length = bar_thickness*3
-        if orientation == DOWN:
+        length = bar_thickness
+        if orientation == DOWN_LEFT:
+            moveto(-length, 0)
+            lineto(0, 0)
+            lineto(0, length)
+        elif orientation == DOWN_RIGHT:
+            moveto(length, 0)
+            lineto(0, 0)
+            lineto(0, length)
+        elif orientation == UP_LEFT:
+            moveto(-length, 0)
+            lineto(0, 0)
+            lineto(0, -length)
+        elif orientation == UP_RIGHT:
+            moveto(length, 0)
+            lineto(0,0)
+            lineto(0, -length)
+        elif orientation == UP:
             moveto(shift, 0)
-            lineto(shift, length)
-        if orientation == RIGHT:
+            lineto(shift, -length)
+        elif orientation == RIGHT:
             moveto(0, shift)
             lineto(length, shift)
-        if orientation == LEFT:
+        elif orientation == LEFT:
             moveto(0, shift)
             lineto(-length, shift)
-        endpath();
+        else:
+            raise ValueError()
+        endpath()
+
+def draw_pillars():
+    translate(largest_length + 50, 0)
+    text("Вертикальні стійки (b5)", 0, 0)
+    translate(20, 20)
+    for i in range(0, 8):
+        draw_bar("b5", b5_length, VERTICAL, tip=False)
+        draw_long_nail(DOWN_LEFT)
+        with translate(bar_thickness, 0):
+            draw_long_nail(DOWN_RIGHT)
+        with translate(0, b5_length):
+            draw_long_nail(UP_LEFT)
+            with translate(bar_thickness, 0):
+                draw_long_nail(UP_RIGHT)
+        translate(bar_thickness*4, 0);
 
 # ----
 # Higher level drawing starts here
 # ----
-
 push()
 text("Вид згори. Каркас + обшивка", 20, 50)
 draw_sheets()
@@ -209,6 +253,8 @@ text("Вид згори, 2ий слой каркасу\n + проекціі ве
 draw_bars()
 draw_pillar_projections()
 
+draw_pillars()
+
 pop()
-translate(largest_length, 50)
+translate(largest_length, 0)
 print_bill()
