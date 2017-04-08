@@ -1,6 +1,4 @@
 # TODO: 1. Calculate raw material demands
-# TODO: 2. Use Г-shaped metal instead of long nails
-# TODO: 3. Calculate total surface space for the painting
 # TODO: 4. Calculate the number of nails required for all of this
 BLACK = 0
 WHITE = 1
@@ -57,7 +55,88 @@ DOWN_RIGHT = 6
 UP_LEFT = 7
 UP_RIGHT = 8
 
+# drawing also adds entries to this
 materials = []
+
+class Sheet(object):
+    def __init__(self, name, width, height, thickness):
+        self.width = width
+        self.height = height
+        self.thickness = thickness
+        self.name = name
+        
+    def surface_area(self):
+        return self.width * self.height
+        
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+
+        return self.name == other.name
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __str__(self):
+        return "(%s) %s*%s*%s" % (
+            self.name, 
+            self.width,
+            self.height,
+            self.thickness)
+
+    def __lt__(self, other):
+        return self.name < other.name
+        
+class Bar(object):
+    def __init__(self, name, length, thickness):
+        self.name = name
+        self.length = length
+        self.thickness = thickness
+        
+    def length():
+        return length
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+
+        return self.name == other.name
+        
+    def __hash__(self):
+        return hash(self.name)
+
+    def __str__(self):
+        return "(%s) %s*%s*%s" % (
+            self.name, 
+            self.length,
+            self.thickness,
+            self.thickness)
+
+    def __lt__(self, other):
+        return self.name < other.name
+
+    def surface_area(self):
+        return self.thickness*self.thickness*2 + 4*self.thickness*self.length
+        
+class Connector(object):
+    def __init__(self, name, description):
+        self.name = name
+        self.description = description
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+
+        return self.name == other.name
+        
+    def __hash__(self):
+        return hash(self.name)
+
+    def __str__(self):
+        return "(%s) %s" % (self.name, self.description)
+
+    def __lt__(self, other):
+        return self.name < other.name
 
 def draw_piece(name, length, thick, orientation, tip=True):
     if (orientation == HORIZONTAL):
@@ -72,11 +151,11 @@ def draw_piece(name, length, thick, orientation, tip=True):
                 text(name, 0, length/2 + thick*5)
 
 def draw_sheet(name, length, orientation):
-    materials.append( "(%s) %s*%s*%s" % (name, int(length/scale), height_mm, sheet_thickness_mm) )
+    materials.append(Sheet(name, int(length/scale), height_mm, sheet_thickness_mm))
     draw_piece(name, length, sheet_thickness, orientation)
 
 def draw_bar(name, length, orientation, tip=True):
-    materials.append( "(%s) %s*%s*%s" % (name, int(length/scale), bar_thickness_mm, bar_thickness_mm) )
+    materials.append(Bar(name, int(length/scale), bar_thickness_mm))
     draw_piece(name, length, bar_thickness, orientation, tip)
     
 def draw_bars():
@@ -183,14 +262,13 @@ def draw_pillar_projections():
         with translate(0, b4_length-bar_thickness):
             draw_pillar_projection()
 
-# TODO: instead of this guy piercing the thing along the length
-# I'll use a flat piece of metal + 2 or 3 nails doing perpendicular which solves the trick of the center crossection
+# At first I thought of nails piercing the wood along the length
+# Now we use a corner-like piece of metal + 2 nails doing perpendicular which solves the trick of the center crossection
 # plus it seems to be much easier in construction
-# Г-shaped pieces of metal can be cool too
 def draw_long_nail(orientation):
-    materials.append("(z1) шуруп короткий")
-    materials.append("(z1) шуруп короткий")
-    materials.append("(z2) куточок")
+    materials.append(Connector("z1", "шуруп для куточка"))
+    materials.append(Connector("z1", "шуруп для куточка"))
+    materials.append(Connector("z2", "куточок"))
     with stroke(0,0,1):
         beginpath()
         shift = bar_thickness/2
@@ -225,7 +303,7 @@ def draw_long_nail(orientation):
         endpath()
 
 def draw_pillars():
-    translate(largest_length + 50, 0)
+    translate(largest_length + 50, 20)
     text("Вертикальні стійки (b5)", 0, 0)
     translate(20, 20)
     for i in range(0, 8):
@@ -238,6 +316,36 @@ def draw_pillars():
             with translate(bar_thickness, 0):
                 draw_long_nail(UP_RIGHT)
         translate(bar_thickness*4, 0);
+        
+def calculate_sheet_area():
+    area = 0
+    for item in materials:
+        if isinstance(item, Sheet):
+            area += item.surface_area()
+        
+    return area
+
+def calculate_bar_area():
+    area = 0
+    for item in materials:
+        if isinstance(item, Bar):
+            area += item.surface_area()
+        
+    return area
+
+def print_surface_area():
+    area_text = "Площа:\n";
+    sheet_area = calculate_sheet_area()
+    sheet_area_m2 = sheet_area / 1000000.0
+    bar_area = calculate_bar_area()
+    bar_area_m2 = bar_area / 1000000.0
+    area_text += "* Фанєрка, м2: %s\n" % str(sheet_area_m2)
+    area_text += "* З обох сторін: %s\n" % str(sheet_area_m2*2)
+    area_text += "* Брус: %s\n" % str(bar_area_m2)
+    total_area_m2 = sheet_area_m2 * 2 + bar_area_m2
+    area_text += "Всього: %s" % total_area_m2
+    text(area_text, 50, 0)
+
 
 # ----
 # Higher level drawing starts here
@@ -252,9 +360,14 @@ translate(0, largest_length + 10)
 text("Вид згори, 2ий слой каркасу\n + проекціі вертікальних стійок (b5)", 20, 50)
 draw_bars()
 draw_pillar_projections()
-
-draw_pillars()
-
 pop()
-translate(largest_length, 0)
+
+push()
+draw_pillars()
+pop()
+
+translate(largest_length, largest_length/2)
 print_bill()
+
+translate(0, largest_length)
+print_surface_area()
