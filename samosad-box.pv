@@ -1,0 +1,166 @@
+BLACK = 0
+WHITE = 1
+
+size(800, 800)
+background(WHITE)
+fill(0,.5)
+
+
+# lines
+stroke(BLACK)
+
+scale = 0.2
+
+translate(10,10)
+
+largest_length_mm = 1900
+piece_length_mm = 1000
+piece_leftover_length_mm = largest_length_mm - piece_length_mm
+height_mm = 700
+
+sheet_thickness_mm = 18
+bar_thickness_mm = 50
+
+b1_length_mm = largest_length_mm - sheet_thickness_mm - bar_thickness_mm
+b2_length_mm = piece_length_mm - bar_thickness_mm * 2
+b3_length_mm = largest_length_mm - b2_length_mm - 3 * bar_thickness_mm - sheet_thickness_mm
+b4_length_mm = piece_length_mm - sheet_thickness_mm
+
+b5_length_mm = height_mm - 2 * bar_thickness_mm
+
+bar_thickness = bar_thickness_mm * scale
+b1_length = b1_length_mm * scale
+b2_length = b2_length_mm * scale
+b3_length = b3_length_mm * scale
+b4_length = b4_length_mm * scale
+b5_length = b5_length_mm * scale
+
+sheet_thickness = sheet_thickness_mm * scale
+largest_length = largest_length_mm * scale
+piece_length = piece_length_mm * scale
+piece_leftover_length = piece_leftover_length_mm * scale
+
+HORIZONTAL = 1
+VERTICAL = 0
+
+materials = []
+
+def draw_piece(name, length, thick, orientation):
+    if (orientation == HORIZONTAL):
+        rect(0,0, length, thick)
+    else:
+        rect(0,0, thick, length)
+    with fill(0):
+        if (orientation == HORIZONTAL):
+            text(name, length/2 + thick*2, thick)
+        else:
+            text(name, 0, length/2 + thick*2)
+
+def draw_sheet(name, length, orientation):
+    materials.append( "(%s) %s*%s*%s" % (name, int(length/scale), height_mm, sheet_thickness_mm) )
+    draw_piece(name, length, sheet_thickness, orientation)
+
+def draw_bar(name, length, orientation):
+    materials.append( "(%s) %s*%s*%s" % (name, int(length/scale), bar_thickness_mm, bar_thickness_mm) )
+    draw_piece(name, length, bar_thickness, orientation)
+    
+def draw_bars():
+    push()
+    draw_bar("b1", b1_length, HORIZONTAL)
+    
+    translate(0, bar_thickness)
+    draw_bar("b1", b1_length, VERTICAL)
+    translate(bar_thickness, 0)
+    
+    translate(b2_length, 0)
+    draw_bar("b1", b1_length, VERTICAL)
+    
+    translate(-b2_length, b1_length - bar_thickness)
+    draw_bar("b2", b2_length, HORIZONTAL)
+    
+    translate(0, -b1_length + bar_thickness + b2_length - sheet_thickness)
+    draw_bar("b2", b2_length, HORIZONTAL)
+    
+    translate(b2_length + bar_thickness)
+    draw_bar("b3", b3_length, HORIZONTAL)
+    
+    translate(b3_length, -b2_length-bar_thickness+sheet_thickness)
+    draw_bar("b4", b4_length, VERTICAL)
+    pop()
+
+def draw_sheets():
+    push()
+    draw_sheet("s1", largest_length, HORIZONTAL)
+    
+    translate(+0, +sheet_thickness)
+    draw_sheet("s1", largest_length, VERTICAL)
+    
+    translate(+sheet_thickness, +largest_length - sheet_thickness)
+    draw_sheet("s2", piece_length, HORIZONTAL)
+    
+    translate(+piece_length, -piece_leftover_length + sheet_thickness)
+    draw_sheet("s3", piece_leftover_length, VERTICAL)
+    
+    translate(0, -sheet_thickness)
+    draw_sheet("s3", piece_leftover_length, HORIZONTAL)
+    
+    translate(piece_leftover_length - sheet_thickness, -piece_length)
+    draw_sheet("s2", piece_length, VERTICAL)
+    
+    translate(-largest_length)
+    pop()
+
+def print_bill():
+    from collections import Counter
+    from operator import itemgetter
+    counter = Counter(materials)
+    
+    bill_str = ""
+    for item, value in sorted(counter.items(), key=itemgetter(0)):
+        bill_str += str(item) + " -> " + str(value) +" шт.\n"
+    
+    fill(0)
+    translate(0 + 20, 50)
+    text("Частини:\n" + bill_str, 50, 50)
+    
+def draw_pillar_projection():
+    rect(0, 0, bar_thickness, bar_thickness)
+    materials.append( "(%s) %s*%s*%s" % ("b5", b5_length_mm, bar_thickness_mm, bar_thickness_mm) )
+    
+def draw_pillar_projections():
+    # leftmost
+    draw_pillar_projection()
+    with translate(0, b4_length-bar_thickness):
+        draw_pillar_projection()
+    with translate(0, b1_length):
+        draw_pillar_projection()
+    # middle
+    with translate(b2_length + bar_thickness, 0):
+        draw_pillar_projection()
+        with translate(0, b4_length-bar_thickness):
+            draw_pillar_projection()
+        with translate(0, b1_length):
+            draw_pillar_projection()
+    # rightmost 2
+    with translate(b1_length, 0):
+        draw_pillar_projection()
+        with translate(0, b4_length-bar_thickness):
+            draw_pillar_projection()
+# ----
+# Higher level drawing starts here
+# ----
+
+push()
+text("Вид згори. Каркас + обшивка", 20, 50)
+draw_sheets()
+translate(sheet_thickness, sheet_thickness)
+draw_bars()
+
+translate(0, largest_length + 10)
+text("Вид згори, 2ий слой каркасу", 20, 50)
+draw_bars()
+draw_pillar_projections()
+
+pop()
+translate(largest_length, 50)
+print_bill()
